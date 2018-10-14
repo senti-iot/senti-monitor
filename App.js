@@ -15,10 +15,17 @@ init({
 const styles = StyleSheet.create({
 	container: {
 		flex: 1,
+		marginTop: 50,
+		marginLeft: 10,
+		marginRight: 10,
 		backgroundColor: '#fff',
-		alignItems: 'center',
-		justifyContent: 'center',
+		// alignItems: 'center',
+		justifyContent: 'flex-start',
 	},
+	header: {
+		backgroundColor: '#BFFC12',
+		fontSize: 28
+	}
 })
 
 class App extends React.Component {
@@ -28,24 +35,46 @@ class App extends React.Component {
 		const client = new Paho.MQTT.Client('hive.senti.cloud', 8083, 'senti-monitor')
 		client.onConnectionLost = this.onConnectionLost
 		client.onMessageArrived = this.onMessageArrived
-		client.connect({ onSuccess: this.onConnect, useSSL: false })
-		// client.connect({ onFailure: this.onFailure, useSSL: true })
+		client.connect({ onSuccess: this.onConnect, useSSL: false, onFailure: this.onFailure })
 
 		this.state = {
 			text: '',
 			client,
 		}
+
+		setInterval(() => {
+			this.publish(client, 'senti/sensor/darwin/cb-pro.local/status', '{ "Text": "Senti Monitor says HI!" }', 1, false)
+		}, 5000)
+
+	}
+
+	componentDidMount() {
+		// const { client } = this.state
+		// this.publish(client, 'senti/sensor/darwin/cb-pro.local/status', '{ "Text": "Senti Monitor says HI!" }', 1, false)
 	}
 
 	pushText = (entry) => {
-		// const { text } = this.state
 		this.setState({ text: entry })
+	}
+
+	publish = (client, topic, payload, qos, retained) => {
+		var message = new Paho.MQTT.Message(payload)
+		message.destinationName = topic
+		if (arguments.length >= 4) message.qos = qos
+		if (arguments.length >= 5) message.retained = retained
+		client.send(message)		
+	}
+
+	onFailure = () => {
+
 	}
 
 	onConnect = () => {
 		const { client } = this.state
 		client.subscribe('senti/sensor/darwin/cb-pro.local/status')
 		this.pushText('connected')
+		this.publish(client, 'senti/sensor/darwin/cb-pro.local/status', '{ "Text": "Senti Monitor says HI!" }', 1, false)
+		// client.publish('senti/sensor/darwin/cb-pro.local/status', '{ "Text": "Senti Monitor says HI!" }', 1, false)
 	}
 
 	onConnectionLost = responseObject => {
@@ -55,6 +84,7 @@ class App extends React.Component {
 	}
 
 	onMessageArrived = message => {
+		const { client } = this.state
 		const obj = JSON.parse(message.payloadString.toString())
 		// console.log(obj.messageId)
 		this.pushText(message.payloadString)
@@ -65,8 +95,10 @@ class App extends React.Component {
 
 		return (
 			<View style={styles.container}>
-				{/* {text.map(entry => <Text key='1'>{entry}</Text>)} */}
-				<Text>{this.state.text}</Text>
+				<Text style={styles.header}>Here comes the honey:</Text>
+				<View>
+					<Text>{this.state.text}</Text>
+				</View>
 			</View>
 		)
 	}
